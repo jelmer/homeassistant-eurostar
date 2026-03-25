@@ -38,16 +38,12 @@ jobs:
         run: |
           PYTHONPATH=. pytest tests/ -v
 
-  validate:
+  hassfest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate manifest.json
-        run: python3 -c "import json; json.load(open('custom_components/eurostar/manifest.json'))"
-      - name: Validate hacs.json
-        run: python3 -c "import json; json.load(open('hacs.json'))"
-      - name: Validate strings.json
-        run: python3 -c "import json; json.load(open('custom_components/eurostar/strings.json'))"
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
 
   hacs:
     runs-on: ubuntu-latest
