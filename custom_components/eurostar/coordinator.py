@@ -320,6 +320,7 @@ class EurostarCoordinator(DataUpdateCoordinator[list[DepartureInfo]]):
         self._origin_id: str = entry.data[CONF_ORIGIN]
         self._destination_id: str = entry.data[CONF_DESTINATION]
         self._static_data: StaticSchedule | None = None
+        self._last_zip_data: bytes | None = None
         self._session = async_get_clientsession(hass)
 
     def _needs_static_refresh(self) -> bool:
@@ -342,6 +343,7 @@ class EurostarCoordinator(DataUpdateCoordinator[list[DepartureInfo]]):
         except Exception as err:
             raise UpdateFailed(f"Failed to download GTFS static data: {err}") from err
 
+        self._last_zip_data = zip_data
         today = date.today()
         self._static_data = await self.hass.async_add_executor_job(
             _parse_static_data,
@@ -397,7 +399,11 @@ class EurostarCoordinator(DataUpdateCoordinator[list[DepartureInfo]]):
         return await self.hass.async_add_executor_job(_parse_rt, rt_data)
 
     async def _async_update_data(self) -> list[DepartureInfo]:
-        """Fetch data from GTFS feeds."""
+        """Fetch data from GTFS feeds.
+
+        Returns upcoming departures, including tomorrow's if today's are
+        exhausted.
+        """
         if self._needs_static_refresh():
             await self._fetch_static_data()
 
@@ -405,13 +411,38 @@ class EurostarCoordinator(DataUpdateCoordinator[list[DepartureInfo]]):
 
         rt_delays = await self._fetch_realtime_data()
 
-        if self._static_data.departures:
-            now = datetime.now(self._static_data.departures[0].departure_time.tzinfo)
+        results = self._build_departure_list(self._static_data.departures, rt_delays)
+
+        # If we don't have enough departures for today, fetch tomorrow's
+        if len(results) < NUM_DEPARTURES:
+            tomorrow = self._static_data.service_date + timedelta(days=1)
+            if self._last_zip_data is not None:
+                tomorrow_schedule = await self.hass.async_add_executor_job(
+                    _parse_static_data,
+                    self._last_zip_data,
+                    self._origin_id,
+                    self._destination_id,
+                    tomorrow,
+                )
+                results.extend(
+                    self._build_departure_list(tomorrow_schedule.departures, rt_delays)
+                )
+
+        return results[:NUM_DEPARTURES]
+
+    def _build_departure_list(
+        self,
+        departures: list[ScheduledDeparture],
+        rt_delays: dict[str, int],
+    ) -> list[DepartureInfo]:
+        """Build a list of upcoming departures with real-time data merged in."""
+        if departures:
+            now = datetime.now(departures[0].departure_time.tzinfo)
         else:
             now = datetime.now(UTC)
 
         results: list[DepartureInfo] = []
-        for dep in self._static_data.departures:
+        for dep in departures:
             effective_departure = dep.departure_time
             delay = rt_delays.get(dep.trip_id)
             realtime_departure = None
@@ -433,9 +464,6 @@ class EurostarCoordinator(DataUpdateCoordinator[list[DepartureInfo]]):
                     delay_seconds=delay,
                 )
             )
-
-            if len(results) >= NUM_DEPARTURES:
-                break
 
         return results
 

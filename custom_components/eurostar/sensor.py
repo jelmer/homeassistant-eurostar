@@ -28,6 +28,21 @@ async def async_setup_entry(
     )
 
 
+def _format_status(dep: DepartureInfo) -> str:
+    """Format a human-readable status string for a departure."""
+    if dep.delay_seconds is None:
+        return "Scheduled"
+    if dep.delay_seconds == 0:
+        return "On time"
+    if dep.delay_seconds > 0:
+        minutes = dep.delay_seconds // 60
+        if minutes < 1:
+            return "On time"
+        return f"Delayed {minutes} min"
+    # Negative delay = ahead of schedule
+    return "On time"
+
+
 class EurostarDepartureSensor(CoordinatorEntity[EurostarCoordinator], SensorEntity):
     """Sensor for an upcoming Eurostar departure."""
 
@@ -66,11 +81,6 @@ class EurostarDepartureSensor(CoordinatorEntity[EurostarCoordinator], SensorEnti
         return self.coordinator.data[self._index]
 
     @property
-    def available(self) -> bool:
-        """Return True if the sensor has data."""
-        return super().available and self._departure is not None
-
-    @property
     def native_value(self) -> datetime | None:
         """Return the effective departure time."""
         dep = self._departure
@@ -84,16 +94,23 @@ class EurostarDepartureSensor(CoordinatorEntity[EurostarCoordinator], SensorEnti
         dep = self._departure
         if dep is None:
             return {}
+
         delay_minutes = None
         if dep.delay_seconds is not None:
             delay_minutes = round(dep.delay_seconds / 60, 1)
+
+        duration = dep.scheduled_arrival - dep.scheduled_departure
+        duration_minutes = round(duration.total_seconds() / 60)
+
         return {
+            "status": _format_status(dep),
             "scheduled_departure": dep.scheduled_departure.isoformat(),
             "scheduled_arrival": dep.scheduled_arrival.isoformat(),
             "realtime_departure": (
                 dep.realtime_departure.isoformat() if dep.realtime_departure else None
             ),
             "delay_minutes": delay_minutes,
+            "duration_minutes": duration_minutes,
             "route_name": dep.route_name,
             "headsign": dep.headsign,
             "trip_id": dep.trip_id,

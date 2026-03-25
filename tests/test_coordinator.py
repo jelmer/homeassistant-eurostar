@@ -238,3 +238,10 @@ def test_parse_static_data_sorted_by_departure() -> None:
     result = _parse_static_data(zip_data, "LON", "PAR", date(2026, 3, 24))
     times = [d.departure_time for d in result.departures]
     assert times == sorted(times)
+
+
+def test_parse_static_data_includes_stop_sequence() -> None:
+    """Departures should include the origin stop sequence for RT matching."""
+    zip_data = _make_sample_zip()
+    result = _parse_static_data(zip_data, "LON", "PAR", date(2026, 3, 24))
+    assert result.departures[0].origin_stop_sequence == 1
