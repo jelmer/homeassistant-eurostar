@@ -7,5 +7,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/jelmer/homeassistant-eurostar/issues",
   "requirements": ["gtfs-realtime-bindings==2.0.0", "protobuf>=4.21.0"],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

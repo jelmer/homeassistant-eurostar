@@ -1,6 +1,6 @@
 [project]
 name = "homeassistant-eurostar"
-version = "0.1.0"
+version = "0.1.1"
 description = "Home Assistant integration for Eurostar train schedules and real-time data"
 readme = "README.md"
 license = "Apache-2.0"
