@@ -1,0 +1,6 @@
+{
+  "name": "Eurostar",
+  "render_readme": true,
+  "domains": ["sensor"],
+  "homeassistant": "2024.1.0"
+}

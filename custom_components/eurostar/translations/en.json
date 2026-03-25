@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Eurostar Route",
+        "description": "Select your origin and destination stations.",
+        "data": {
+          "origin": "Origin station",
+          "destination": "Destination station"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Eurostar data feed.",
+      "same_station": "Origin and destination must be different stations."
+    },
+    "abort": {
+      "already_configured": "This route is already configured."
+    }
+  }
+}

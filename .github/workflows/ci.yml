@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Check formatting
+        run: ruff format --check .
+      - name: Lint
+        run: ruff check .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install homeassistant gtfs-realtime-bindings protobuf pytest
+      - name: Run tests
+        run: |
+          PYTHONPATH=. pytest tests/ -v
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest.json
+        run: python3 -c "import json; json.load(open('custom_components/eurostar/manifest.json'))"
+      - name: Validate hacs.json
+        run: python3 -c "import json; json.load(open('hacs.json'))"
+      - name: Validate strings.json
+        run: python3 -c "import json; json.load(open('custom_components/eurostar/strings.json'))"
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
